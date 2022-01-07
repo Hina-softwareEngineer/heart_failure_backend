@@ -1,6 +1,5 @@
 from config import mongoUri
 from pymongo import MongoClient
-import pprint
 
 class Database:
 
@@ -25,11 +24,20 @@ class Database:
         
         if self.DB is not None:
             return self.DB.users.find_one({ "email" : email})
-        return None
+        return {acknowledged : False}
 
     def createUserInDB(self, user):
         response = self.DB.users.insert_one(user)
         return response
+
+
+    def user_create_predicted_result(self, record):
+        if self.DB is not None:
+            return self.DB.medical_record.insert_one(record)
+        return {acknowledged : False}
+
+    def user_heart_history(self):
+        pass
 
 
     def __del__(self):

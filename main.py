@@ -1,14 +1,16 @@
-from datetime import datetime, timedelta
+from Database import Database
+from pydantic import BaseModel
 from typing import Optional
-import pprint
+from datetime import datetime, timedelta
 from fastapi import Depends, FastAPI, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from Database import Database
+import pickle
+import warnings
 
-from pydantic import BaseModel
+warnings.filterwarnings("ignore")
 
 SECRET_KEY = "33a6640eb3a4e6460d32613f8b65f6ba5f46c3776ef31522adeab71292ccd4a3"
 ALGORITHM = "HS256"
@@ -38,12 +40,25 @@ class UserInDB(User):
     _id : str
     exp : int
 
+class HeartData(BaseModel):
+    age : int
+    restingBP : int
+    cholestrol : int
+    fastingBS : int
+    maxHR : int
+    oldpeak : float
+    sex : str
+    chestPainType : str
+    restingECG : str
+    exerciseAngina : str
+    st_slope: str
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-app = FastAPI()
+model = pickle.load(open("model.pkl", 'rb'))
+ss = pickle.load(open('scaler.scl', 'rb'))
 
 
 def verify_password(plain_password, hashed_password):
@@ -133,7 +148,8 @@ async def signup_user(user: User):
         'username' : user.username,
         'email' : user.email,
         'phone' : user.phone,
-        'password' : hashedPassword
+        'password' : hashedPassword,
+        'created_at' : datetime.now()
     }
     response = DB.createUserInDB(userobj)
 
@@ -179,6 +195,104 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_active_user
     return current_user
 
 
-@app.post("/rate-prediction", response_model=UserInDB)
-async def heart_rate_prediction(current_user: UserInDB = Depends(get_current_active_user)):
-    return {'data' : 1}
+@app.post("/rate-prediction")
+async def heart_rate_prediction(data : HeartData, current_user: UserInDB = Depends(get_current_active_user)):
+    
+    # for sex
+    male = female = 0
+
+    if data.sex == 'F':
+        female = 1
+    else:
+        male = 1
+
+    # for chestpaintype
+    asy = ata = nap = ta = 0
+    
+    if data.chestPainType == 'ASY':
+        asy = 1
+    elif data.chestPainType == 'ATA':
+        ata = 1
+    elif data.chestPainType == 'NAP':
+        nap = 1
+    elif data.chestPainType == 'TA':
+        ta = 1
+
+    
+    # for Resting ECG
+    lvh = normal = st = 0
+    
+    if data.restingECG == 'LVH':
+        lvh = 1
+    elif data.restingECG == 'Normal':
+        normal = 1
+    elif data.restingECG == 'ST':
+        st = 1
+
+    
+    # for exercise Angina
+    ea_yes = ea_no = 0
+
+    if data.exerciseAngina == 'Y':
+        ea_yes = 1
+    elif data.exerciseAngina == 'N':
+        ea_no = 1
+
+
+    # for st_slope
+    st_down = st_flat = st_up = 0
+    
+    if data.st_slope == 'Down':
+        st_down = 1
+    elif data.st_slope == 'Flat':
+        st_flat = 1
+    elif data.st_slope == 'Up':
+        st_up = 1
+
+
+    hot_encoded_data = [data.age, data.restingBP, data.cholestrol,
+                        data.fastingBS, data.maxHR, data.oldpeak, 
+                        female, male, asy, ata, nap, ta, lvh, normal,
+                        st, ea_no, ea_yes, st_down, st_flat, st_up]
+
+    try:
+        transformed_data = ss.transform([hot_encoded_data])
+
+        response = model.predict(transformed_data)
+        prediction = response.tolist()
+
+        record_object = {
+            'age' : data.age,
+            'restingBP' : data.restingBP,
+            'cholestrol' : data.cholestrol,
+            'fastingBS' : data.fastingBS,
+            'maxHR' : data.maxHR,
+            'oldpeak' : data.oldpeak,
+            'gender' : data.sex,
+            'chestPainType' : data.chestPainType,
+            'restingECG' : data.restingECG,
+            'exerciseAngina' : data.exerciseAngina,
+            'st_slope' : data.st_slope,
+            'heartDisease' : prediction[0],
+            'created_at' : datetime.now()
+        }
+
+        response = DB.user_create_predicted_result(record_object)
+
+        if not response.acknowledged:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail="Failed to create record.",
+            )
+
+        record_object['_id'] = str(response.inserted_id)
+        
+        return {'data' : record_object}
+    
+    except Exception as err:
+        print('Error in the Heart Rate Prediction function : ',err)
+        HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail= {message : 'Fail to Predict.', err : err},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
