@@ -1,6 +1,6 @@
-from config import mongoUri
 from pymongo import MongoClient
 from datetime import datetime , timedelta
+import os
 
 class Database:
 
@@ -11,7 +11,7 @@ class Database:
 
 
     def initializeDatabase(self):
-        self.client = MongoClient(mongoUri, serverSelectionTimeoutMS=5000)
+        self.client = MongoClient(os.getenv('MONGODB_URI'), serverSelectionTimeoutMS=5000)
         try:
             self.client.server_info()
             self.DB = self.client.heart_attack

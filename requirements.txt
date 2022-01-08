@@ -1,0 +1,16 @@
+pymongo
+pymongo[srv]
+fastapi
+uvicorn
+pydantic
+datetime
+python-jose
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+dnspython
+numpy
+pandas
+scipy
+scikit-learn==1.0.1
+python-dotenv

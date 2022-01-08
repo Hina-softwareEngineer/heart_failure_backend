@@ -1,0 +1,8 @@
+{
+  "builds": [
+    {"src": "fastAPI.py", "use": "@now/python"}
+  ],
+  "routes": [
+    {"src": "/(.*)", "dest": "fastAPI.py"}
+  ]
+}
