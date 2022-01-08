@@ -1,6 +1,6 @@
 {
   "builds": [
-    {"src": "fastAPI.py", "use": "@now/python"}
+    {"src": "fastAPI.py", "use": "@vercel/python"}
   ],
   "routes": [
     {"src": "/(.*)", "dest": "fastAPI.py"}
