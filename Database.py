@@ -1,5 +1,6 @@
 from config import mongoUri
 from pymongo import MongoClient
+from datetime import datetime , timedelta
 
 class Database:
 
@@ -24,7 +25,7 @@ class Database:
         
         if self.DB is not None:
             return self.DB.users.find_one({ "email" : email})
-        return {acknowledged : False}
+        return None
 
     def createUserInDB(self, user):
         response = self.DB.users.insert_one(user)
@@ -36,8 +37,20 @@ class Database:
             return self.DB.medical_record.insert_one(record)
         return {acknowledged : False}
 
-    def user_heart_history(self):
-        pass
+    def user_heart_history(self, user_id):
+        if self.DB is not None:
+            return self.DB.medical_record.find({'user_id' : user_id})
+        return []
+
+    def week_heart_history(self, user_id):
+        lessThanDate = datetime.now()
+        greaterThanDate = (datetime.now() - timedelta(days = 30))
+
+        print(lessThanDate , greaterThanDate)
+
+        if self.DB is not None:
+            return self.DB.medical_record.find({'user_id' : user_id, 'created_at' : { '$gte' : greaterThanDate , '$lte' : lessThanDate }})
+        return None
 
 
     def __del__(self):

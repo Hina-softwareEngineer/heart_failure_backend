@@ -274,7 +274,8 @@ async def heart_rate_prediction(data : HeartData, current_user: UserInDB = Depen
             'exerciseAngina' : data.exerciseAngina,
             'st_slope' : data.st_slope,
             'heartDisease' : prediction[0],
-            'created_at' : datetime.now()
+            'created_at' : datetime.now(),
+            'user_id' : current_user['_id']
         }
 
         response = DB.user_create_predicted_result(record_object)
@@ -293,6 +294,33 @@ async def heart_rate_prediction(data : HeartData, current_user: UserInDB = Depen
         print('Error in the Heart Rate Prediction function : ',err)
         HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail= {message : 'Fail to Predict.', err : err},
+            detail= { 'message' : 'Fail to Predict.', 'err' : err},
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+@app.get("/all-medical-records")
+def all_medical_records(current_user: UserInDB = Depends(get_current_active_user)):
+    
+    records = DB.user_heart_history(current_user['_id'])
+    all_records = []
+
+    for record in records:
+        record['_id'] = str(record['_id'])
+        all_records.append(record)
+
+    return {'data' : all_records}
+
+
+
+@app.get("/week-medical-records")
+def week_medical_records(current_user: UserInDB = Depends(get_current_active_user)):
+
+    records = DB.week_heart_history(current_user['_id'])
+    all_records = []
+
+    for record in records:
+        record['_id'] = str(record['_id'])
+        all_records.append(record)
+
+    return {'data' : all_records}
