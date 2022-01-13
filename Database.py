@@ -44,9 +44,8 @@ class Database:
 
     def week_heart_history(self, user_id):
         lessThanDate = datetime.now()
-        greaterThanDate = (datetime.now() - timedelta(days = 30))
+        greaterThanDate = (datetime.now() - timedelta(days = 10))
 
-        print(lessThanDate , greaterThanDate)
 
         if self.DB is not None:
             return self.DB.medical_record.find({'user_id' : user_id, 'created_at' : { '$gte' : greaterThanDate , '$lte' : lessThanDate }})
